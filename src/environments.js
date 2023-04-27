@@ -20,5 +20,11 @@ export const environments = [
     name: 'Footprint Court (HDR Labs)',
     path: 'https://storage.googleapis.com/donmccurdy-static/footprint_court_2k.exr',
     format: '.exr'
+  },
+  {
+    id: 'skybox',
+    name: 'Skybox',
+    path: '/GeneratedScene/skybox.png',
+    format: '.png'
   }
 ];

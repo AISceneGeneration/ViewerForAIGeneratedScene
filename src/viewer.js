@@ -429,6 +429,9 @@ export class Viewer {
       this.scene.environment = envMap;
       this.scene.background = this.state.background ? envMap : this.backgroundColor;
 
+      // const texture = new THREE.TextureLoader().load( "/GeneratedScene/skybox.png" );
+      // this.scene.background = texture;
+
     });
 
   }
