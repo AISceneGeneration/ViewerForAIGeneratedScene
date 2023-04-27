@@ -39,7 +39,7 @@ class App {
     this.inputEl = el.querySelector('#file-input');
     this.validator = new Validator(el);
 
-    this.createDropzone();
+    // this.createDropzone();
     this.hideSpinner();
 
     const options = this.options;
@@ -52,6 +52,8 @@ class App {
     if (options.model) {
       this.view(options.model, '', new Map());
     }
+
+    this.load('/GeneratedScene/SampleScene_Prepared.glb')
   }
 
   /**
@@ -81,21 +83,28 @@ class App {
    * Loads a fileset provided by user action.
    * @param  {Map<string, File>} fileMap
    */
-  load (fileMap) {
+  async load (filepath) {
     let rootFile;
-    let rootPath;
-    Array.from(fileMap).forEach(([path, file]) => {
-      if (file.name.match(/\.(gltf|glb)$/)) {
-        rootFile = file;
-        rootPath = path.replace(file.name, '');
-      }
-    });
+    // let rootPath;
+    const response = await fetch(filepath)
+    if (!response.ok) throw new Error('Failed to load file'
+      + (response.status ? `: ${response.status} ${response.statusText}` : ''));
+    
+    const file = await response.blob()
+    const rootPath = '';
 
-    if (!rootFile) {
-      this.onError('No .gltf or .glb asset found.');
-    }
+    // Array.from(fileMap).forEach(([path, file]) => {
+    //   if (file.name.match(/\.(gltf|glb)$/)) {
+    //     rootFile = file;
+    //     rootPath = path.replace(file.name, '');
+    //   }
+    // });
+    // if (!rootFile) {
+    //   this.onError('No .gltf or .glb asset found.');
+    // }
 
-    this.view(rootFile, rootPath, fileMap);
+    this.view(file, rootPath, new Map([[filepath, file]]));
+    this.showSpinner();
   }
 
   /**
