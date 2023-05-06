@@ -26,6 +26,9 @@
     "postversion": "git push && git push --tags"
   },
   "dependencies": {
+    "@gltf-transform/core": "^3.2.1",
+    "@gltf-transform/extensions": "^3.2.1",
+    "@gltf-transform/functions": "^3.2.1",
     "dat.gui": "^0.7.9",
     "gltf-validator": "^2.0.0-dev.3.9",
     "query-string": "^8.1.0",

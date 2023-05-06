@@ -132,9 +132,10 @@ class App {
       .load(fileURL, rootPath, fileMap)
       .catch((e) => this.onError(e))
       .then((gltf) => {
-        if (!this.options.kiosk) {
-          this.validator.validate(fileURL, rootPath, fileMap, gltf);
-        }
+        // Skip validation to speed up
+        // if (!this.options.kiosk) {
+        //   this.validator.validate(fileURL, rootPath, fileMap, gltf);
+        // }
         cleanup();
       });
   }
