@@ -23,6 +23,7 @@ import {
 } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { TextureLoader } from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
@@ -95,7 +96,9 @@ export class Viewer {
     this.backgroundColor = new Color(this.state.bgColor);
 
     this.scene = new Scene();
-    this.scene.background = this.backgroundColor;
+    const bgLoader = new TextureLoader();
+    const bgTexture = bgLoader.load('/GeneratedScene/skybox.png');
+    this.scene.background = bgTexture;
 
     const fov = options.preset === Preset.ASSET_GENERATOR
       ? 0.8 * 180 / Math.PI
@@ -427,7 +430,10 @@ export class Viewer {
     this.getCubeMapTexture( environment ).then(( { envMap } ) => {
 
       this.scene.environment = envMap;
-      this.scene.background = this.state.background ? envMap : this.backgroundColor;
+      // this.scene.background = this.state.background ? envMap : this.backgroundColor;
+      const bgLoader = new TextureLoader();
+      const bgTexture = bgLoader.load('/GeneratedScene/skybox.png');
+      this.scene.background = bgTexture;
 
       // const texture = new THREE.TextureLoader().load( "/GeneratedScene/skybox.png" );
       // this.scene.background = texture;
