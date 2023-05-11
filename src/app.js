@@ -53,7 +53,7 @@ class App {
       this.view(options.model, '', new Map());
     }
 
-    this.load('/GeneratedScene/SampleScene_Prepared.glb')
+    this.load('/GeneratedScene/Optimized_Scene.glb')
   }
 
   /**
