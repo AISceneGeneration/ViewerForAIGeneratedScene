@@ -4,6 +4,7 @@ import { SimpleDropzone } from 'simple-dropzone';
 import { Validator } from './validator.js';
 import { Footer } from './components/footer';
 import queryString from 'query-string';
+import pako from 'pako';
 
 window.VIEWER = {};
 
@@ -86,7 +87,12 @@ class App {
   async load (filepath) {
     let rootFile;
     // let rootPath;
-    const response = await fetch(filepath)
+    const response = await fetch(filepath,
+      {
+        headers:{
+        'Content-Encoding': 'gzip',
+        }
+      })
     if (!response.ok) throw new Error('Failed to load file'
       + (response.status ? `: ${response.status} ${response.statusText}` : ''));
     
