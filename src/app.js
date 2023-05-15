@@ -90,7 +90,8 @@ class App {
     const response = await fetch(filepath,
       {
         headers:{
-        'Content-Encoding': 'gzip',
+          'Accept-Encoding': 'gzip',
+          'Content-Encoding': 'gzip',
         }
       })
     if (!response.ok) throw new Error('Failed to load file'

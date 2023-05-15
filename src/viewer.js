@@ -97,7 +97,7 @@ export class Viewer {
 
     this.scene = new Scene();
     const bgLoader = new TextureLoader();
-    const bgTexture = bgLoader.load('/GeneratedScene/skybox.png');
+    const bgTexture = bgLoader.load('/GeneratedScene/skybox-30p.jpg');
     this.scene.background = bgTexture;
 
     const fov = options.preset === Preset.ASSET_GENERATOR
@@ -432,10 +432,10 @@ export class Viewer {
       this.scene.environment = envMap;
       // this.scene.background = this.state.background ? envMap : this.backgroundColor;
       const bgLoader = new TextureLoader();
-      const bgTexture = bgLoader.load('/GeneratedScene/skybox.png');
+      const bgTexture = bgLoader.load('/GeneratedScene/skybox-30p.jpg');
       this.scene.background = bgTexture;
 
-      // const texture = new THREE.TextureLoader().load( "/GeneratedScene/skybox.png" );
+      // const texture = new THREE.TextureLoader().load( "/GeneratedScene/skybox-30p.jpg" );
       // this.scene.background = texture;
 
     });
