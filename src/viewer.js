@@ -321,6 +321,7 @@ export class Viewer {
     window.VIEWER.scene = this.content;
 
     this.printGraph(this.content);
+    this.playAllClips();
 
   }
 
