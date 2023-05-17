@@ -80,38 +80,78 @@ class App {
     return this.viewer;
   }
 
+  saveModelToIndexedDB(modelName, modelData) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('models', 1);
+      request.onupgradeneeded = function(event) {
+        const db = event.target.result;
+        const objectStore = db.createObjectStore('models', { keyPath: 'name' });
+      };
+      request.onsuccess = function(event) {
+        const db = event.target.result;
+        const transaction = db.transaction(['models'], 'readwrite');
+        const objectStore = transaction.objectStore('models');
+        const data = { name: modelName, data: modelData };
+        const request = objectStore.put(data);
+        request.onsuccess = function(event) {
+          resolve();
+        };
+        request.onerror = function(event) {
+          reject(event.target.error);
+        };
+      };
+      request.onerror = function(event) {
+        reject(event.target.error);
+      };
+    });
+  }
+
   /**
    * Loads a fileset provided by user action.
+   * use indexedDB to store the file for faster loading
    * @param  {Map<string, File>} fileMap
    */
   async load (filepath) {
-    let rootFile;
-    // let rootPath;
-    const response = await fetch(filepath,
-      {
-        headers:{
-          'Accept-Encoding': 'gzip',
-          'Content-Encoding': 'gzip',
+    // Try to get the data from indexedDB first
+    const request = indexedDB.open('models', 1);
+    request.onsuccess = async function(event) {
+      const db = event.target.result;
+      const transaction = db.transaction(['models'], 'readwrite');
+      const objectStore = transaction.objectStore('models');
+      const request = objectStore.get(filepath);
+      request.onsuccess = async function(event) {
+        const modelData = event.target.result;
+        if (modelData) {
+          console.log('load from indexedDB');
+          this.view(modelData.data, '', new Map([[filepath, modelData.data]]));
+          this.showSpinner();
+        } else {
+          console.log('load from server');
+          const response = await fetch(filepath,
+            {
+              headers:{
+                'Accept-Encoding': 'gzip',
+                'Content-Encoding': 'gzip',
+              }
+            })
+          if (!response.ok) throw new Error('Failed to load file'
+            + (response.status ? `: ${response.status} ${response.statusText}` : ''));
+          
+          const file = await response.blob()
+          const rootPath = '';
+      
+          this.saveModelToIndexedDB(filepath, file);
+          this.view(file, rootPath, new Map([[filepath, file]]));
+          this.showSpinner();
         }
-      })
-    if (!response.ok) throw new Error('Failed to load file'
-      + (response.status ? `: ${response.status} ${response.statusText}` : ''));
-    
-    const file = await response.blob()
-    const rootPath = '';
-
-    // Array.from(fileMap).forEach(([path, file]) => {
-    //   if (file.name.match(/\.(gltf|glb)$/)) {
-    //     rootFile = file;
-    //     rootPath = path.replace(file.name, '');
-    //   }
-    // });
-    // if (!rootFile) {
-    //   this.onError('No .gltf or .glb asset found.');
-    // }
-
-    this.view(file, rootPath, new Map([[filepath, file]]));
-    this.showSpinner();
+      }.bind(this);
+      request.onerror = function(event) {
+        console.log(event.target.error);
+      };
+    }.bind(this);
+    request.onerror = function(event) {
+      console.log(event.target.error);
+    };
   }
 
   /**
