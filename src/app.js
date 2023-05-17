@@ -39,6 +39,7 @@ class App {
     this.dropEl = el.querySelector('.dropzone');
     this.inputEl = el.querySelector('#file-input');
     this.validator = new Validator(el);
+    this.db = null;
 
     // this.createDropzone();
     this.hideSpinner();
@@ -82,14 +83,14 @@ class App {
 
   saveModelToIndexedDB(modelName, modelData) {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('models', 1);
+      const request = window.indexedDB.open('models', 1);
       request.onupgradeneeded = function(event) {
-        const db = event.target.result;
-        const objectStore = db.createObjectStore('models', { keyPath: 'name' });
+        this.db = event.target.result;
+        const objectStore = this.db.createObjectStore('models', { keyPath: 'name' });
       };
       request.onsuccess = function(event) {
-        const db = event.target.result;
-        const transaction = db.transaction(['models'], 'readwrite');
+        this.db = event.target.result;
+        const transaction = this.db.transaction(['models'], 'readwrite');
         const objectStore = transaction.objectStore('models');
         const data = { name: modelName, data: modelData };
         const request = objectStore.put(data);
@@ -113,10 +114,14 @@ class App {
    */
   async load (filepath) {
     // Try to get the data from indexedDB first
-    const request = indexedDB.open('models', 1);
+    const request = window.indexedDB.open('models', 1);
+    request.onupgradeneeded = function(event) {
+      this.db = event.target.result;
+      const objectStore = this.db.createObjectStore('models', { keyPath: 'name' });
+    };
     request.onsuccess = async function(event) {
-      const db = event.target.result;
-      const transaction = db.transaction(['models'], 'readwrite');
+      this.db = event.target.result;
+      const transaction = this.db.transaction(['models'], 'readwrite');
       const objectStore = transaction.objectStore('models');
       const request = objectStore.get(filepath);
       request.onsuccess = async function(event) {
