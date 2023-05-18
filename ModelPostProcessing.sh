@@ -1,10 +1,47 @@
 echo "Start Processing Scene Model"
 
+export INPUT_FILE=./public/GeneratedScene/SampleScene.glb
+export OUTPUT_FILE=./public/GeneratedScene/Optimized_Scene.glb
+
 # The glb file exported from Unity is located at ./public/GeneratedScene/SampleScene.glb
 
 # In the demo, SampleScene.glb is approximately 179MB,
 # after processing, Optimized_Scene.glb is approximately 30MB
 # with the help of mod_deflate in Apache, the size of the file transferred to the client is approximately 18.6MB
+
+### DEDUPLICATE ###
+# Deduplicate accessors, textures, materials, meshes, and skins. Some exporters or
+# pipeline processing may lead to multiple resources within a file containing
+# redundant copies of the same information. This functions scans for these cases
+# and merges the duplicates where possible, reducing file size. The process may
+# be very slow on large files with many accessors.
+
+# Deduplication early in a pipeline may also help other optimizations, like
+# compression and instancing, to be more effective.
+echo "[0] Deduplicate"
+gltf-transform dedup $INPUT_FILE ./public/GeneratedScene/0_dedup.glb
+
+### SIMPLIFY ### // This is too radical, will cause the model to lose too much detail, but it does shrink the file size remarkably
+# Simplify mesh, reducing number of vertices.
+# Simplification algorithm producing meshes with fewer triangles and
+# vertices. Simplification is lossy, but the algorithm aims to
+# preserve visual quality as much as possible, for given parameters.
+
+# The algorithm aims to reach the target --ratio, while minimizing error. If
+# error exceeds the specified --error threshold, the algorithm will quit
+# before reaching the target ratio. Examples:
+
+# - ratio=0.5, error=0.001: Aims for 50% simplification, constrained to 0.1% error.
+# - ratio=0.5, error=1: Aims for 50% simplification, unconstrained by error.
+# - ratio=0.0, error=0.01: Aims for maximum simplification, constrained to 1% error.
+
+# Topology, particularly split vertices, will also limit the simplifier. For
+# best results, apply a 'weld' operation before simplification.
+
+# Based on the meshoptimizer library (https://github.com/zeux/meshoptimizer).
+
+# echo "[1] Simplify"
+# gltf-transform simplify ./public/GeneratedScene/0_dedup.glb ./public/GeneratedScene/1_simplify.glb --ratio 0.8 --error 0.001
 
 ### MATERIAL ###
 # Convert the material to metalrough for better compatibility
@@ -19,7 +56,7 @@ echo "Start Processing Scene Model"
 # have less optimal compression than the original. Ideally, lossless PNG textures
 # should be used as input, and then compressed after this conversion
 echo "[1] Convert Material to MetalRough"
-gltf-transform metalrough ./public/GeneratedScene/SampleScene.glb ./public/GeneratedScene/1_material_metalrough.glb
+gltf-transform metalrough ./public/GeneratedScene/0_dedup.glb ./public/GeneratedScene/1_material_metalrough.glb
 
 ### TEXTURE ###
 # Compress the texture to reduce overall glb size
@@ -71,8 +108,8 @@ gltf-transform weld ./public/GeneratedScene/3_animation_sparse.glb ./public/Gene
 # further details, see:
 
 # https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/EXT_mesh_gpu_instancing.
-echo "[5] Optimize Geometry with Weld"
-gltf-transform weld ./public/GeneratedScene/4_geometry_weld.glb ./public/GeneratedScene/5_geometry_instance.glb
+echo "[5] Optimize Geometry with GPU instancing"
+gltf-transform instance ./public/GeneratedScene/4_geometry_weld.glb ./public/GeneratedScene/5_geometry_instance.glb
 
 # Reorder: Optimize vertex data for locality of reference.
 # Choose whether the order should be optimal for transmission size (recommended for Web) or for GPU
@@ -92,6 +129,25 @@ gltf-transform reorder ./public/GeneratedScene/5_geometry_instance.glb ./public/
 echo "[7] Prune Unused Data"
 gltf-transform prune ./public/GeneratedScene/6_geometry_reorder.glb ./public/GeneratedScene/7_prune.glb
 
+### REGENERATE TANGENTS ###
+# Generates MikkTSpace vertex tangents.
+
+# In some situations normal maps may appear incorrectly, displaying hard edges
+# at seams, or unexpectedly inverted insets and extrusions. The issue is most
+# commonly caused by a mismatch between the software used to bake the normal map
+# and the pixel shader or other code used to render it. While this may be a
+# frustration to an artist/designer, it is not always possible for the rendering
+# engine to reconstruct the tangent space used by the authoring software.
+
+# Most normal map bakers use the MikkTSpace standard (http://www.mikktspace.com/)
+# to generate vertex tangents while creating a normal map, and the technique is
+# recommended by the glTF 2.0 specification. Generating vertex tangents with this
+# tool may resolve rendering issues related to normal maps in engines that cannot
+# compute MikkTSpace tangents at runtime.
+
+echo "[8] Regenerate tangents"
+gltf-transform tangents ./public/GeneratedScene/7_prune.glb ./public/GeneratedScene/8_tangent.glb --overwrite true
+
 # Meshopt: Compress geometry, morph targets, and animation with Meshopt. Meshopt
 # compression decodes very quickly, and is best used in combination with a
 # lossless compression method like brotli or gzip.
@@ -107,11 +163,13 @@ gltf-transform prune ./public/GeneratedScene/6_geometry_reorder.glb ./public/Gen
 # References
 # - meshoptimizer: https://github.com/zeux/meshoptimizer
 # - EXT_meshopt_compression: https://github.com/KhronosGroup/gltf/blob/main/extensions/2.0/Vendor/EXT_meshopt_compression/
-echo "[8] Compress Geometry with Meshopt"
-gltf-transform meshopt ./public/GeneratedScene/7_prune.glb ./public/GeneratedScene/Optimized_Scene.glb
+echo "[9] Compress Geometry with Meshopt"
+gltf-transform meshopt ./public/GeneratedScene/8_tangent.glb $OUTPUT_FILE
 
 # Remove all intermediate files
 echo "[8] Remove Intermediate Files"
+rm ./public/GeneratedScene/0_dedup.glb
+# rm ./public/GeneratedScene/1_simplify.glb
 rm ./public/GeneratedScene/1_material_metalrough.glb
 rm ./public/GeneratedScene/2_texture_webp.glb
 rm ./public/GeneratedScene/3_animation_sparse.glb
@@ -119,6 +177,7 @@ rm ./public/GeneratedScene/4_geometry_weld.glb
 rm ./public/GeneratedScene/5_geometry_instance.glb
 rm ./public/GeneratedScene/6_geometry_reorder.glb
 rm ./public/GeneratedScene/7_prune.glb
+rm ./public/GeneratedScene/8_tangent.glb
 
 # Done
-echo "Finish Processing Scene Model, final model is located at ./public/GeneratedScene/Optimized_Scene.glb"
+echo "Finish Processing Scene Model, final model is located at $OUTPUT_FILE"
