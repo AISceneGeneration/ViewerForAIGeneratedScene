@@ -58,77 +58,6 @@ gltf-transform dedup $INPUT_FILE ./public/GeneratedScene/0_dedup.glb
 echo "[1] Convert Material to MetalRough"
 gltf-transform metalrough ./public/GeneratedScene/0_dedup.glb ./public/GeneratedScene/1_material_metalrough.glb
 
-### TEXTURE ###
-# Compress the texture to reduce overall glb size
-# Already resized all texture to 128x128 when exporting from Unity, so no need to resize here
-# WebP: Compresses textures with WebP, using sharp. Reduces transmitted file
-# size. Compared to GPU texture compression like KTX/Basis, PNG/JPEG/WebP must
-# be fully decompressed in GPU memory — this makes texture GPU upload much
-# slower, and may consume 4-8x more GPU memory. However, the PNG/JPEG/WebP
-# compression methods are typically more forgiving than GPU texture compression,
-# and require less tuning to achieve good visual and filesize results.
-echo "[2] Compress Texture with WebP"
-gltf-transform webp ./public/GeneratedScene/1_material_metalrough.glb ./public/GeneratedScene/2_texture_webp.glb
-
-### ANIMATION ###
-# Try to optimize storage with sparse data storage,
-# Sparse: Scans all Accessors in the Document, detecting whether each Accessor would
-# benefit from sparse data storage. Currently, sparse data storage is used only
-# when many values (≥ 1/3) are zeroes. Particularly for assets using morph
-# target ("shape key") animation, sparse data storage may significantly reduce
-# file sizes.
-echo "[3] Optimize Animation with Sparse Data Storage"
-gltf-transform sparse ./public/GeneratedScene/2_texture_webp.glb ./public/GeneratedScene/3_animation_sparse.glb
-
-### GEOEMTRY ###
-# Weld: Index geometry and optionally merge similar vertices. When merged and indexed,
-# data is shared more efficiently between vertices. File size can be reduced, and
-# the GPU can sometimes use the vertex cache more efficiently.
-
-# When welding, the --tolerance threshold determines which vertices qualify for
-# welding based on distance between the vertices as a fraction of the primitive's
-# bounding box (AABB). For example, --tolerance=0.01 welds vertices within +/-1%
-# of the AABB's longest dimension. Other vertex attributes are also compared
-# during welding, with attribute-specific thresholds. For --tolerance=0, geometry
-# is indexed in place, without merging.
-echo "[4] Optimize Geometry with Weld"
-gltf-transform weld ./public/GeneratedScene/3_animation_sparse.glb ./public/GeneratedScene/4_geometry_weld.glb
-
-#Instance: For meshes reused by more than one node in a scene, this command creates an
-# EXT_mesh_gpu_instancing extension to aid with GPU instancing. In engines that
-# support the extension, this may allow GPU instancing to be used, reducing draw
-# calls and improving framerate.
-
-# Engines may use GPU instancing with or without the presence of this extension,
-# and are strongly encouraged to do so. However, particularly when loading a
-# model at runtime, the extension provides useful context allowing the engine to
-# use this technique efficiently.
-
-# Instanced meshes cannot be animated, and must share the same materials. For
-# further details, see:
-
-# https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/EXT_mesh_gpu_instancing.
-echo "[5] Optimize Geometry with GPU instancing"
-gltf-transform instance ./public/GeneratedScene/4_geometry_weld.glb ./public/GeneratedScene/5_geometry_instance.glb
-
-# Reorder: Optimize vertex data for locality of reference.
-# Choose whether the order should be optimal for transmission size (recommended for Web) or for GPU
-# rendering performance. When optimizing for transmission size, reordering is expected to be a pre-
-# processing step before applying Meshopt compression and lossless supercompression (such as gzip or
-# brotli). Reordering will only reduce size when used in combination with other compression methods.
-# Based on the meshoptimizer library (https://github.com/zeux/meshoptimizer).
-echo "[6] Optimize Geometry with Reorder"
-gltf-transform reorder ./public/GeneratedScene/5_geometry_instance.glb ./public/GeneratedScene/6_geometry_reorder.glb
-
-# Prune: Removes properties from the file if they are not referenced by a Scene. 
-# Helpful when cleaning up after complex workflows or a faulty exporter. This function
-# may (conservatively) fail to identify some unused extension properties, such as
-# lights, but it will not remove anything that is still in use, even if used by
-# an extension. Animations are considered unused if they do not target any nodes
-# that are children of a scene.
-echo "[7] Prune Unused Data"
-gltf-transform prune ./public/GeneratedScene/6_geometry_reorder.glb ./public/GeneratedScene/7_prune.glb
-
 ### REGENERATE TANGENTS ###
 # Generates MikkTSpace vertex tangents.
 
@@ -145,8 +74,79 @@ gltf-transform prune ./public/GeneratedScene/6_geometry_reorder.glb ./public/Gen
 # tool may resolve rendering issues related to normal maps in engines that cannot
 # compute MikkTSpace tangents at runtime.
 
-echo "[8] Regenerate tangents"
-gltf-transform tangents ./public/GeneratedScene/7_prune.glb ./public/GeneratedScene/8_tangent.glb --overwrite true
+echo "[2] Regenerate tangents"
+gltf-transform tangents ./public/GeneratedScene/1_material_metalrough.glb ./public/GeneratedScene/2_tangent.glb --overwrite true
+
+### TEXTURE ###
+# Compress the texture to reduce overall glb size
+# Already resized all texture to 128x128 when exporting from Unity, so no need to resize here
+# WebP: Compresses textures with WebP, using sharp. Reduces transmitted file
+# size. Compared to GPU texture compression like KTX/Basis, PNG/JPEG/WebP must
+# be fully decompressed in GPU memory — this makes texture GPU upload much
+# slower, and may consume 4-8x more GPU memory. However, the PNG/JPEG/WebP
+# compression methods are typically more forgiving than GPU texture compression,
+# and require less tuning to achieve good visual and filesize results.
+echo "[3] Compress Texture with WebP"
+gltf-transform webp ./public/GeneratedScene/2_tangent.glb ./public/GeneratedScene/3_texture_webp.glb
+
+### ANIMATION ###
+# Try to optimize storage with sparse data storage,
+# Sparse: Scans all Accessors in the Document, detecting whether each Accessor would
+# benefit from sparse data storage. Currently, sparse data storage is used only
+# when many values (≥ 1/3) are zeroes. Particularly for assets using morph
+# target ("shape key") animation, sparse data storage may significantly reduce
+# file sizes.
+echo "[4] Optimize Animation with Sparse Data Storage"
+gltf-transform sparse ./public/GeneratedScene/3_texture_webp.glb ./public/GeneratedScene/4_animation_sparse.glb
+
+### GEOEMTRY ###
+# Weld: Index geometry and optionally merge similar vertices. When merged and indexed,
+# data is shared more efficiently between vertices. File size can be reduced, and
+# the GPU can sometimes use the vertex cache more efficiently.
+
+# When welding, the --tolerance threshold determines which vertices qualify for
+# welding based on distance between the vertices as a fraction of the primitive's
+# bounding box (AABB). For example, --tolerance=0.01 welds vertices within +/-1%
+# of the AABB's longest dimension. Other vertex attributes are also compared
+# during welding, with attribute-specific thresholds. For --tolerance=0, geometry
+# is indexed in place, without merging.
+echo "[5] Optimize Geometry with Weld"
+gltf-transform weld ./public/GeneratedScene/4_animation_sparse.glb ./public/GeneratedScene/5_geometry_weld.glb --tolerance=0
+
+#Instance: For meshes reused by more than one node in a scene, this command creates an
+# EXT_mesh_gpu_instancing extension to aid with GPU instancing. In engines that
+# support the extension, this may allow GPU instancing to be used, reducing draw
+# calls and improving framerate.
+
+# Engines may use GPU instancing with or without the presence of this extension,
+# and are strongly encouraged to do so. However, particularly when loading a
+# model at runtime, the extension provides useful context allowing the engine to
+# use this technique efficiently.
+
+# Instanced meshes cannot be animated, and must share the same materials. For
+# further details, see:
+
+# https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/EXT_mesh_gpu_instancing.
+echo "[6] Optimize Geometry with GPU instancing"
+gltf-transform instance ./public/GeneratedScene/5_geometry_weld.glb ./public/GeneratedScene/6_geometry_instance.glb
+
+# Reorder: Optimize vertex data for locality of reference.
+# Choose whether the order should be optimal for transmission size (recommended for Web) or for GPU
+# rendering performance. When optimizing for transmission size, reordering is expected to be a pre-
+# processing step before applying Meshopt compression and lossless supercompression (such as gzip or
+# brotli). Reordering will only reduce size when used in combination with other compression methods.
+# Based on the meshoptimizer library (https://github.com/zeux/meshoptimizer).
+echo "[7] Optimize Geometry with Reorder"
+gltf-transform reorder ./public/GeneratedScene/6_geometry_instance.glb ./public/GeneratedScene/7_geometry_reorder.glb
+
+# Prune: Removes properties from the file if they are not referenced by a Scene. 
+# Helpful when cleaning up after complex workflows or a faulty exporter. This function
+# may (conservatively) fail to identify some unused extension properties, such as
+# lights, but it will not remove anything that is still in use, even if used by
+# an extension. Animations are considered unused if they do not target any nodes
+# that are children of a scene.
+echo "[8] Prune Unused Data"
+gltf-transform prune ./public/GeneratedScene/7_geometry_reorder.glb ./public/GeneratedScene/8_prune.glb
 
 # Meshopt: Compress geometry, morph targets, and animation with Meshopt. Meshopt
 # compression decodes very quickly, and is best used in combination with a
@@ -164,20 +164,20 @@ gltf-transform tangents ./public/GeneratedScene/7_prune.glb ./public/GeneratedSc
 # - meshoptimizer: https://github.com/zeux/meshoptimizer
 # - EXT_meshopt_compression: https://github.com/KhronosGroup/gltf/blob/main/extensions/2.0/Vendor/EXT_meshopt_compression/
 echo "[9] Compress Geometry with Meshopt"
-gltf-transform meshopt ./public/GeneratedScene/8_tangent.glb $OUTPUT_FILE
+gltf-transform meshopt ./public/GeneratedScene/8_prune.glb $OUTPUT_FILE
 
 # Remove all intermediate files
 echo "[8] Remove Intermediate Files"
 rm ./public/GeneratedScene/0_dedup.glb
 # rm ./public/GeneratedScene/1_simplify.glb
 rm ./public/GeneratedScene/1_material_metalrough.glb
-rm ./public/GeneratedScene/2_texture_webp.glb
-rm ./public/GeneratedScene/3_animation_sparse.glb
-rm ./public/GeneratedScene/4_geometry_weld.glb
-rm ./public/GeneratedScene/5_geometry_instance.glb
-rm ./public/GeneratedScene/6_geometry_reorder.glb
-rm ./public/GeneratedScene/7_prune.glb
-rm ./public/GeneratedScene/8_tangent.glb
+rm ./public/GeneratedScene/2_tangent.glb
+rm ./public/GeneratedScene/3_texture_webp.glb
+rm ./public/GeneratedScene/4_animation_sparse.glb
+rm ./public/GeneratedScene/5_geometry_weld.glb
+rm ./public/GeneratedScene/6_geometry_instance.glb
+rm ./public/GeneratedScene/7_geometry_reorder.glb
+rm ./public/GeneratedScene/8_prune.glb
 
 # Done
 echo "Finish Processing Scene Model, final model is located at $OUTPUT_FILE"
