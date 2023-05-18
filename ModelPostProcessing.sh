@@ -57,14 +57,31 @@ gltf-transform sparse ./public/GeneratedScene/2_texture_webp.glb ./public/Genera
 echo "[4] Optimize Geometry with Weld"
 gltf-transform weld ./public/GeneratedScene/3_animation_sparse.glb ./public/GeneratedScene/4_geometry_weld.glb
 
+#Instance: For meshes reused by more than one node in a scene, this command creates an
+# EXT_mesh_gpu_instancing extension to aid with GPU instancing. In engines that
+# support the extension, this may allow GPU instancing to be used, reducing draw
+# calls and improving framerate.
+
+# Engines may use GPU instancing with or without the presence of this extension,
+# and are strongly encouraged to do so. However, particularly when loading a
+# model at runtime, the extension provides useful context allowing the engine to
+# use this technique efficiently.
+
+# Instanced meshes cannot be animated, and must share the same materials. For
+# further details, see:
+
+# https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Vendor/EXT_mesh_gpu_instancing.
+echo "[5] Optimize Geometry with Weld"
+gltf-transform weld ./public/GeneratedScene/4_geometry_weld.glb ./public/GeneratedScene/5_geometry_instance.glb
+
 # Reorder: Optimize vertex data for locality of reference.
 # Choose whether the order should be optimal for transmission size (recommended for Web) or for GPU
 # rendering performance. When optimizing for transmission size, reordering is expected to be a pre-
 # processing step before applying Meshopt compression and lossless supercompression (such as gzip or
 # brotli). Reordering will only reduce size when used in combination with other compression methods.
 # Based on the meshoptimizer library (https://github.com/zeux/meshoptimizer).
-echo "[5] Optimize Geometry with Reorder"
-gltf-transform reorder ./public/GeneratedScene/4_geometry_weld.glb ./public/GeneratedScene/5_geometry_reorder.glb
+echo "[6] Optimize Geometry with Reorder"
+gltf-transform reorder ./public/GeneratedScene/5_geometry_instance.glb ./public/GeneratedScene/6_geometry_reorder.glb
 
 # Prune: Removes properties from the file if they are not referenced by a Scene. 
 # Helpful when cleaning up after complex workflows or a faulty exporter. This function
@@ -72,8 +89,8 @@ gltf-transform reorder ./public/GeneratedScene/4_geometry_weld.glb ./public/Gene
 # lights, but it will not remove anything that is still in use, even if used by
 # an extension. Animations are considered unused if they do not target any nodes
 # that are children of a scene.
-echo "[6] Prune Unused Data"
-gltf-transform prune ./public/GeneratedScene/5_geometry_reorder.glb ./public/GeneratedScene/6_prune.glb
+echo "[7] Prune Unused Data"
+gltf-transform prune ./public/GeneratedScene/6_geometry_reorder.glb ./public/GeneratedScene/7_prune.glb
 
 # Meshopt: Compress geometry, morph targets, and animation with Meshopt. Meshopt
 # compression decodes very quickly, and is best used in combination with a
@@ -90,8 +107,8 @@ gltf-transform prune ./public/GeneratedScene/5_geometry_reorder.glb ./public/Gen
 # References
 # - meshoptimizer: https://github.com/zeux/meshoptimizer
 # - EXT_meshopt_compression: https://github.com/KhronosGroup/gltf/blob/main/extensions/2.0/Vendor/EXT_meshopt_compression/
-echo "[7] Compress Geometry with Meshopt"
-gltf-transform meshopt ./public/GeneratedScene/6_prune.glb ./public/GeneratedScene/Optimized_Scene.glb
+echo "[8] Compress Geometry with Meshopt"
+gltf-transform meshopt ./public/GeneratedScene/7_prune.glb ./public/GeneratedScene/Optimized_Scene.glb
 
 # Remove all intermediate files
 echo "[8] Remove Intermediate Files"
@@ -99,8 +116,9 @@ rm ./public/GeneratedScene/1_material_metalrough.glb
 rm ./public/GeneratedScene/2_texture_webp.glb
 rm ./public/GeneratedScene/3_animation_sparse.glb
 rm ./public/GeneratedScene/4_geometry_weld.glb
-rm ./public/GeneratedScene/5_geometry_reorder.glb
-rm ./public/GeneratedScene/6_prune.glb
+rm ./public/GeneratedScene/5_geometry_instance.glb
+rm ./public/GeneratedScene/6_geometry_reorder.glb
+rm ./public/GeneratedScene/7_prune.glb
 
 # Done
 echo "Finish Processing Scene Model, final model is located at ./public/GeneratedScene/Optimized_Scene.glb"
