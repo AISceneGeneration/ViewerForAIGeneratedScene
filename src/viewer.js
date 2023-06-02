@@ -19,7 +19,9 @@ import {
   WebGLRenderer,
   sRGBEncoding,
   LinearToneMapping,
-  ACESFilmicToneMapping
+  ACESFilmicToneMapping,
+  CatmullRomCurve3,
+  Clock,
 } from 'three';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -34,6 +36,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { GUI } from 'dat.gui';
 
 import { environments } from './environments.js';
+import { Camera } from '@gltf-transform/core';
 
 const DEFAULT_CAMERA = '[default]';
 
@@ -47,6 +50,20 @@ const IS_IOS = isIOS();
 const Preset = {ASSET_GENERATOR: 'assetgenerator'};
 
 Cache.enabled = true;
+
+let frameCount = 0;
+let fps = 0;
+let prevTime = 0;
+var skipFrame = 0;
+
+const clock = new Clock();
+const cameraClock = new Clock();
+const FPS = 60;
+const CameraFPS = 60;
+const singleFrameTime = 1 / FPS;
+const singleCameraFrameTime = 1 / CameraFPS;
+let timeStmp = 0;
+let cameraTimeStmp = 0;
 
 export class Viewer {
 
@@ -104,14 +121,51 @@ export class Viewer {
       ? 0.8 * 180 / Math.PI
       : 60;
     this.defaultCamera = new PerspectiveCamera( fov, el.clientWidth / el.clientHeight, 0.01, 1000 );
-    this.activeCamera = this.defaultCamera;
+    // this.activeCamera = this.defaultCamera;
     this.scene.add( this.defaultCamera );
+
+    this.cameraPathIndex = 0;
+    this.cameraCurve = null;
+
+    //使用指定的点创建一条平滑的三维样条曲线当做相机运动路径
+    this.cameraCurve = new CatmullRomCurve3(
+      [
+        // new Vector3(-30, 40, 50),
+        // new Vector3(35, 45, 45),
+        // new Vector3(40, 25, -40),
+        // new Vector3(40, -10, -40),
+        // new Vector3(40, 20, -40),
+        // new Vector3(-45, 35, -45)
+        // new Vector3(-10, 0, 10),
+        // new Vector3(15, 5, 5),
+        // new Vector3(10, 15, 10),
+        // new Vector3(10, 5, 5),
+        // new Vector3(10, 5, 5),
+        // new Vector3(-5, 5, 5)
+        new Vector3(-15, 0, -15),
+        new Vector3(0, 0, -15),
+        new Vector3(15, 0, -15),
+        new Vector3(12, 0, 0),
+        new Vector3(12, 0, 12),
+        new Vector3(0, 0, 8),
+        new Vector3(-15, 0, 15),
+        new Vector3(-18, 0, 0)
+      ],
+      true
+    )
+
+    // create a dynamic camera moving around the scene
+    this.movingCamera = new PerspectiveCamera( fov, el.clientWidth / el.clientHeight, 0.01, 1000 );
+    this.movingCamera.position.set(130, 130, 130);
+    this.movingCamera.lookAt(0, 0, 0);
+    this.scene.add( this.movingCamera );
+    this.activeCamera = this.movingCamera;
 
     this.renderer = window.renderer = new WebGLRenderer({antialias: true});
     this.renderer.useLegacyLights = false;
     this.renderer.outputEncoding = sRGBEncoding;
     this.renderer.setClearColor( 0xcccccc );
-    this.renderer.setPixelRatio( window.devicePixelRatio );
+    this.renderer.setPixelRatio( window.devicePixelRatio || 1 );
     this.renderer.setSize( el.clientWidth, el.clientHeight );
 
     this.pmremGenerator = new PMREMGenerator( this.renderer );
@@ -147,19 +201,68 @@ export class Viewer {
 
     requestAnimationFrame( this.animate );
 
-    const dt = (time - this.prevTime) / 1000;
+    const delta = clock.getDelta();
+    timeStmp += delta;
 
-    this.controls.update();
-    this.stats.update();
-    this.mixer && this.mixer.update(dt);
-    this.render();
+    const cameraDelta = cameraClock.getDelta();
+    cameraTimeStmp += cameraDelta;
 
-    this.prevTime = time;
+    if (timeStmp > singleFrameTime) {
+      const dt = (time - this.prevTime) / 1000;
+      // frameCount++;
+      this.controls.update();
+      this.stats.update();
+      this.mixer && this.mixer.update(dt);
+      this.render();
+      this.prevTime = time;
+      timeStmp = (timeStmp % singleFrameTime);
+    }
+    // console.log( cameraTimeStmp, singleCameraFrameTime)
+    if (cameraTimeStmp > singleCameraFrameTime) {
+      this.updateCamera();
+      cameraTimeStmp = (cameraTimeStmp % singleCameraFrameTime);
+    }
+
+    // const dt = (time - this.prevTime) / 1000;
+
+    // frameCount++;
+
+    // this.controls.update();
+    // this.stats.update();
+    // this.mixer && this.mixer.update(dt);
+    // this.render();
+
+    // this.prevTime = time;
+
+    // if (time > prevTime + 1000) {
+    //   fps = Math.round((frameCount * 1000) / (time - prevTime));
+    //   prevTime = time;
+    //   frameCount = 0;
+    //   console.log('FPS', fps);
+    // }
 
   }
 
-  render () {
+  updateCamera() {
+    //相机路径的索引在0~1000中往复增加
+    this.cameraPathIndex += 1
+    if (this.cameraPathIndex === 8000) {
+      this.cameraPathIndex = 0
+    }
+    const curveIndex = this.cameraPathIndex / 8000
 
+    //取相机路径上当前点的坐标
+    const tmpCameraPosition = this.cameraCurve.getPointAt(curveIndex) //curveIndex取值0~1
+    //设置相机坐标为在相机路径上当前点的位置
+    this.movingCamera.position.set(
+      tmpCameraPosition.x,
+      tmpCameraPosition.y,
+      tmpCameraPosition.z
+    )
+    this.movingCamera.lookAt(new Vector3(0, 0, 0)) //相机看向原点
+  }
+
+  render () {
     this.renderer.render( this.scene, this.activeCamera );
     if (this.state.grid) {
       this.axesCamera.position.copy(this.defaultCamera.position)
@@ -320,9 +423,9 @@ export class Viewer {
 
     window.VIEWER.scene = this.content;
 
-    this.printGraph(this.content);
+    // this.printGraph(this.content);
     this.playAllClips();
-
+    this.gui.close();
   }
 
   printGraph (node) {
@@ -362,7 +465,8 @@ export class Viewer {
   setCamera ( name ) {
     if (name === DEFAULT_CAMERA) {
       this.controls.enabled = true;
-      this.activeCamera = this.defaultCamera;
+      // this.activeCamera = this.defaultCamera;
+      this.activeCamera = this.movingCamera;
     } else {
       this.controls.enabled = false;
       this.content.traverse((node) => {

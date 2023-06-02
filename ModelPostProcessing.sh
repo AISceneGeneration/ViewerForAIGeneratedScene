@@ -1,7 +1,7 @@
 echo "Start Processing Scene Model"
 
-export INPUT_FILE=./public/GeneratedScene/SampleScene.glb
-export OUTPUT_FILE=./public/GeneratedScene/Optimized_Scene.glb
+export INPUT_FILE=./public/GeneratedScene/AnimalParkDemo.glb
+export OUTPUT_FILE=./public/GeneratedScene/Animal_Optimized_Scene.glb
 
 # The glb file exported from Unity is located at ./public/GeneratedScene/SampleScene.glb
 
@@ -87,7 +87,7 @@ gltf-transform tangents ./public/GeneratedScene/1_material_metalrough.glb ./publ
 # compression methods are typically more forgiving than GPU texture compression,
 # and require less tuning to achieve good visual and filesize results.
 echo "[3] Compress Texture with WebP"
-gltf-transform webp ./public/GeneratedScene/2_tangent.glb ./public/GeneratedScene/3_texture_webp.glb
+gltf-transform webp ./public/GeneratedScene/2_tangent.glb ./public/GeneratedScene/3_texture_webp.glb --effort 90 --quality 50
 
 ### ANIMATION ###
 # Try to optimize storage with sparse data storage,
@@ -113,7 +113,7 @@ gltf-transform sparse ./public/GeneratedScene/3_texture_webp.glb ./public/Genera
 echo "[5] Optimize Geometry with Weld"
 gltf-transform weld ./public/GeneratedScene/4_animation_sparse.glb ./public/GeneratedScene/5_geometry_weld.glb --tolerance=0
 
-#Instance: For meshes reused by more than one node in a scene, this command creates an
+# Instance: For meshes reused by more than one node in a scene, this command creates an
 # EXT_mesh_gpu_instancing extension to aid with GPU instancing. In engines that
 # support the extension, this may allow GPU instancing to be used, reducing draw
 # calls and improving framerate.
@@ -137,7 +137,7 @@ gltf-transform instance ./public/GeneratedScene/5_geometry_weld.glb ./public/Gen
 # brotli). Reordering will only reduce size when used in combination with other compression methods.
 # Based on the meshoptimizer library (https://github.com/zeux/meshoptimizer).
 echo "[7] Optimize Geometry with Reorder"
-gltf-transform reorder ./public/GeneratedScene/6_geometry_instance.glb ./public/GeneratedScene/7_geometry_reorder.glb
+gltf-transform reorder ./public/GeneratedScene/6_geometry_instance.glb ./public/GeneratedScene/7_geometry_reorder.glb --target performance
 
 # Prune: Removes properties from the file if they are not referenced by a Scene. 
 # Helpful when cleaning up after complex workflows or a faulty exporter. This function
@@ -146,7 +146,7 @@ gltf-transform reorder ./public/GeneratedScene/6_geometry_instance.glb ./public/
 # an extension. Animations are considered unused if they do not target any nodes
 # that are children of a scene.
 echo "[8] Prune Unused Data"
-gltf-transform prune ./public/GeneratedScene/7_geometry_reorder.glb ./public/GeneratedScene/8_prune.glb
+gltf-transform prune ./public/GeneratedScene/7_geometry_reorder.glb ./public/GeneratedScene/8_prune.glb --keep-attributes false --keep-leaves false
 
 # Meshopt: Compress geometry, morph targets, and animation with Meshopt. Meshopt
 # compression decodes very quickly, and is best used in combination with a

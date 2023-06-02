@@ -55,7 +55,7 @@ class App {
       this.view(options.model, '', new Map());
     }
 
-    this.load('/GeneratedScene/Optimized_Scene.glb')
+    this.load('/GeneratedScene/Animal_Optimized_Scene.glb')
   }
 
   /**
