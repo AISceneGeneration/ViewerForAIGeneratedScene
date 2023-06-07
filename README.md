@@ -4,8 +4,11 @@ Preview glTF 2.0 models in WebGL using three.js and a drag-and-drop interface.
 
 Viewer: [gltf-viewer.donmccurdy.com](https://gltf-viewer.donmccurdy.com/)
 
+This fork is tailored for lightweight 3D Scenes exported from AISceneGeneration tool.  
+A 3D model lightweight pipeline is implemented in https://github.com/AISceneGeneration/ViewerForAIGeneratedScene/blob/main/ModelPostProcessing.sh  
+You can run it with bash. Be sure you set the `INPUT_FILE` and `OUTPUT_FILE` correctly before running.  
+gltf-transform cinnabd-line tool is required for the pipeline. You can get it easily through npm:`npm install --global @gltf-transform/cli`
 
-![screenshot](https://user-images.githubusercontent.com/1848368/31580352-b7354096-b101-11e7-86d7-f07677835812.png)
 
 ## Quickstart
 
@@ -19,7 +22,3 @@ npm run dev
 - [THREE.GLTFLoader](https://threejs.org/docs/#examples/en/loaders/GLTFLoader)
 - [glTF 2.0 Specification](https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md)
 - [glTF 2.0 Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/)
-
-## Known Issues
-
-- [ ] Limited drag-and-drop support in Safari.
